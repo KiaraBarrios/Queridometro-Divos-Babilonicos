@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Queridômetro Divos Babilônicos</title>
     <style>
+        /* CSS: Estilo e Identidade */
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
@@ -12,7 +13,8 @@
 
         .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; background: #fff; text-align: center; position: relative; transition: 0.3s; }
-        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; transition: 0.3s; }
+        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; transition: 0.4s; }
+        .foto-perfil:hover { transform: scale(1.1); }
         
         .odiado { border-color: #ff0000 !important; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
         .alvo-casa { border-color: #007bff !important; box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); }
@@ -41,6 +43,7 @@
 
 <div id="tela-login">
     <h1 style="color: #ff4500;">👁️ <br>Divos Babilônicos</h1>
+    <p>Acesse o Confessionário</p>
     <select id="loginUsuario" style="width: 100%; padding: 10px; margin-bottom: 10px;"></select>
     <input type="password" id="loginSenha" placeholder="Senha (123)" style="width: 94%; padding: 10px;">
     <button onclick="fazerLogin()" style="width: 100%; margin-top: 20px;" class="btn-voto">ENTRAR</button>
@@ -71,14 +74,14 @@
     <div class="lista-participantes" id="painel"></div>
 
     <div id="area-admin" class="btn-admin">
-        <button onclick="abrirResumoMensal()" style="background:#17a2b8; color:white;">📊 Estatísticas Completas</button>
+        <button onclick="abrirResumoMensal()" style="background:#17a2b8; color:white;">📊 Estatísticas Mensais</button>
         <button onclick="limparTudo()" style="background:#dc3545; color:white;">⚠️ Resetar Mês</button>
     </div>
 </div>
 
 <div id="modal-mensal">
     <div class="modal-content">
-        <h2>Ranking Mensal</h2>
+        <h2>📊 Ranking Completo</h2>
         <div id="dados-mensais" style="text-align: left; max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
         <button onclick="fecharModal()" class="btn-voto" style="width:100%">FECHAR</button>
     </div>
@@ -121,7 +124,7 @@
         const emoji = document.getElementById('selectEmoji').value;
         const chave = `${usuarioLogado}-${para}`;
         if (usuarioLogado === para) return alert("Não pode votar em si mesmo!");
-        if (votosRealizados[chave]) return alert("Voto já realizado!");
+        if (votosRealizados[chave]) return alert("Você já votou nesta pessoa!");
 
         participantes.find(p => p.nome === para).reacoes[emoji]++;
         votosRealizados[chave] = true;
@@ -150,15 +153,15 @@
             else if (p.nome === pAlvo && maxAlvo > 0) { classeBorda = "alvo-casa"; badge = '<span class="status-badge badge-blue">Alvo</span>'; }
             else if (p.nome === pFav && maxFav > 0) { classeBorda = "favorito"; badge = '<span class="status-badge badge-gold">Favorito</span>'; }
 
-            // Lógica para carregar fotos do GitHub (Pasta fotos/ e sem acentos)
+            // LÓGICA DE FOTOS: Prioriza .jpeg conforme seu GitHub e remove acentos do nome
             const nomeArquivo = p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
                 ${badge}
-                <img src="./fotos/${nomeArquivo}.jpg" class="foto-perfil ${classeBorda}" 
-                     onerror="this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}; this.src='./fotos/${nomeArquivo}.jpg'">
+                <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil ${classeBorda}" 
+                     onerror="this.onerror=function(){this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}; this.src='./fotos/${nomeArquivo}.png'}; this.src='./fotos/${nomeArquivo}.jpg'">
                 <h3>${p.nome}</h3>
                 <div class="contadores">
                     <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span>
@@ -171,19 +174,23 @@
 
     function abrirResumoMensal() {
         const dados = document.getElementById('dados-mensais');
-        let html = "<ul>";
-        participantes.forEach(p => {
-            html += `<li><strong>${p.nome}:</strong> ❤️${p.reacoes.coracao} | 🐍${p.reacoes.cobra} | 🎯${p.reacoes.alvo} | 🤮${p.reacoes.vomito} | 💼${p.reacoes.mala} | 🍪${p.reacoes.biscoito}</li>`;
+        let html = "<ul style='list-style:none; padding:0;'>";
+        participantes.sort((a,b) => b.reacoes.coracao - a.reacoes.coracao).forEach(p => {
+            html += `<li style="padding:10px; border-bottom:1px solid #eee;">
+                <strong>${p.nome}</strong><br>
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); font-size:0.8em; margin-top:5px;">
+                    <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span><span>🌱 ${p.reacoes.planta}</span>
+                    <span>🎯 ${p.reacoes.alvo}</span><span>💼 ${p.reacoes.mala}</span><span>🍪 ${p.reacoes.biscoito}</span><span>💣 ${p.reacoes.bomba}</span>
+                </div></li>`;
         });
         dados.innerHTML = html + "</ul>";
         document.getElementById('modal-mensal').classList.add('ativo');
     }
 
     function fecharModal() { document.getElementById('modal-mensal').classList.remove('ativo'); }
-    function limparTudo() { if(confirm("Resetar?")) { localStorage.clear(); location.reload(); } }
+    function limparTudo() { if(confirm("Deseja zerar as estatísticas do mês?")) { localStorage.clear(); location.reload(); } }
     function logout() { location.reload(); }
     window.onload = inicializar;
 </script>
 </body>
 </html>
-
