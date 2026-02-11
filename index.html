@@ -5,9 +5,8 @@
     <title>Queridômetro Divos Babilônicos</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, onValue, push, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // CONFIGURAÇÃO BASEADA NO SEU PASSO 2 DO FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyCKE-wC2V20qRGJeP00jGC6Xs8jY1CzG3A",
             authDomain: "queridometro-divos-babilonicos.firebaseapp.com",
@@ -30,11 +29,13 @@
 
         const nomes = Object.keys(senhas);
         let usuarioLogado = null;
+        let votosGlobaisHoje = {};
 
-        // Escuta global para sincronizar os votos de todos em tempo real
-        onValue(ref(db, 'participantes'), (snapshot) => {
+        // Sincronização em tempo real
+        onValue(ref(db, '/'), (snapshot) => {
             const data = snapshot.val() || {};
-            atualizarPainel(data);
+            votosGlobaisHoje = data.votos_travados || {};
+            atualizarPainel(data.participantes || {});
         });
 
         window.fazerLogin = () => {
@@ -49,29 +50,43 @@
             } else { alert("Senha incorreta!"); }
         };
 
-        window.votarDireto = (paraNome, emoji) => {
+        window.votarDireto = async (paraNome, emoji) => {
             if (usuarioLogado === paraNome) return alert("Não pode votar em si mesmo!");
             
-            // Grava o log na nuvem para a Kiara ver todos os votos
+            const chaveVoto = `${usuarioLogado}_${paraNome}`;
+            
+            // Verificação de segurança na nuvem
+            const checkVoto = await get(ref(db, `votos_travados/${chaveVoto}`));
+            if (checkVoto.exists()) {
+                alert("Você já votou nesta pessoa hoje!");
+                return;
+            }
+
+            // Registra trava de voto
+            await set(ref(db, `votos_travados/${chaveVoto}`), true);
+            
+            // Registra Log
             push(ref(db, 'logs'), {
                 de: usuarioLogado, para: paraNome, emoji: emoji, data: new Date().toLocaleString()
             });
 
+            // Incrementa contador
             const span = document.getElementById(`count-${paraNome}-${emoji}`);
             const currentVal = parseInt(span.textContent.replace(/[^0-9]/g, "")) || 0;
             update(ref(db, `participantes/${paraNome}/reacoes`), { [emoji]: currentVal + 1 });
         };
 
-        function atualizarPainel(data) {
+        function atualizarPainel(participantesData) {
             const painel = document.getElementById('painel');
             if (!painel) return;
             painel.innerHTML = '';
             
             nomes.sort().forEach(nome => {
-                const p = data[nome] || { reacoes: {} };
+                const p = participantesData[nome] || { reacoes: {} };
                 const r = p.reacoes || {};
                 const nomeArquivo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                
+                const jaVotou = votosGlobaisHoje[`${usuarioLogado}_${nome}`];
+
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -88,17 +103,19 @@
                         <span id="count-${nome}-bomba">💣${r.bomba || 0}</span>
                     </div>
                     <div class="voto-rapido">
-                        <button onclick="votarDireto('${nome}', 'coracao')">❤️</button>
-                        <button onclick="votarDireto('${nome}', 'cobra')">🐍</button>
-                        <button onclick="votarDireto('${nome}', 'vomito')">🤮</button>
-                        <button onclick="votarDireto('${nome}', 'planta')">🌱</button>
-                        <button onclick="votarDireto('${nome}', 'alvo')">🎯</button>
-                        <button onclick="votarDireto('${nome}', 'mala')">💼</button>
-                        <button onclick="votarDireto('${nome}', 'biscoito')">🍪</button>
-                        <button onclick="votarDireto('${nome}', 'bomba')">💣</button>
+                        ${['coracao','cobra','vomito','planta','alvo','mala','biscoito','bomba'].map(e => `
+                            <button onclick="votarDireto('${nome}', '${e}')" ${jaVotou ? 'disabled style="opacity:0.2"' : ''}>
+                                ${getEmojiChar(e)}
+                            </button>
+                        `).join('')}
                     </div>`;
                 painel.appendChild(card);
             });
+        }
+
+        function getEmojiChar(name) {
+            const map = {coracao:'❤️', cobra:'🐍', vomito:'🤮', planta:'🌱', alvo:'🎯', mala:'💼', biscoito:'🍪', bomba:'💣'};
+            return map[name];
         }
 
         window.verLogs = () => {
@@ -107,68 +124,63 @@
                 let html = "<div style='text-align:left; max-height:300px; overflow-y:auto; background:#f4f4f4; padding:15px; border-radius:10px;'>";
                 if(logs) {
                     Object.values(logs).reverse().forEach(l => {
-                        html += `• <strong>${l.de}</strong> deu ${l.emoji} para <strong>${l.para}</strong> <small>(${l.data})</small><br>`;
+                        html += `• <strong>${l.de}</strong> deu ${getEmojiChar(l.emoji) || l.emoji} para <strong>${l.para}</strong> <br>`;
                     });
-                } else { html += "Nenhum voto global registrado na nuvem."; }
+                }
                 document.getElementById('modal-corpo').innerHTML = html + "</div>";
                 document.getElementById('modal').style.display = 'flex';
             }, { onlyOnce: true });
         };
 
         window.limparTudo = () => {
-            if(confirm("Deseja ZERAR o banco de dados?")) set(ref(db, '/'), { participantes: {}, logs: {} });
+            if(confirm("Deseja ZERAR tudo (votos e travas)?")) set(ref(db, '/'), { participantes: {}, logs: {}, votos_travados: {} });
         };
 
         window.onload = () => {
             const loginSel = document.getElementById('loginUsuario');
             nomes.sort().forEach(n => loginSel.add(new Option(n, n)));
-            atualizarPainel({});
         };
     </script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1250px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { max-width: 1250px; margin: auto; background: white; padding: 30px; border-radius: 15px; }
         .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
         .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; text-align: center; background: #fff; }
         .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #eee; }
         .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.8em; margin: 10px 0; background: #f9f9f9; padding: 8px; border-radius: 8px; }
         .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; border-top: 1px solid #eee; padding-top: 10px; }
-        .voto-rapido button { font-size: 1.3em; cursor: pointer; border: none; background: none; transition: 0.2s; padding: 5px; }
-        .voto-rapido button:hover { transform: scale(1.3); }
-        .area-admin { display: none; gap: 10px; margin-top: 30px; padding-top: 20px; border-top: 1px dashed #ccc; justify-content: center; }
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000; }
-        #tela-login { max-width: 400px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 2px solid #ff4500; }
+        .voto-rapido button { font-size: 1.3em; cursor: pointer; border: none; background: none; padding: 5px; transition: 0.2s; }
+        .voto-rapido button:hover:not(:disabled) { transform: scale(1.3); }
+        .area-admin { display: none; gap: 10px; margin-top: 30px; border-top: 1px dashed #ccc; justify-content: center; padding-top: 20px; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
+        #tela-login { max-width: 400px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; border: 2px solid #ff4500; }
         input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
-
 <div id="tela-login">
-    <h1 style="color:#ff4500;">👁️ <br>Queridômetro Divos Babilônicos</h1>
+    <h1 style="color:#ff4500;">👑 <br>Queridômetro</h1>
     <select id="loginUsuario"></select>
     <input type="password" id="loginSenha" placeholder="Senha Individual">
-    <button onclick="fazerLogin()" style="width: 100%; padding: 12px; background: #ff4500; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">ACESSAR CONFESSIONÁRIO</button>
+    <button onclick="fazerLogin()" style="width:100%; padding:12px; background:#ff4500; color:white; border:none; border-radius:8px; cursor:pointer;">ENTRAR</button>
 </div>
-
 <div id="tela-principal" class="container" style="display:none;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
-        <span>👤 Participante: <strong><span id="nomeLogado"></span></strong></span>
-        <button onclick="location.reload()" style="background:#606770; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Sair</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <span>👤 <strong><span id="nomeLogado"></span></strong></span>
+        <button onclick="location.reload()">Sair</button>
     </div>
     <div class="lista-participantes" id="painel"></div>
     <div id="area-admin" class="area-admin">
-        <button onclick="verLogs()" style="background:#17a2b8; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">👁️ VER HISTÓRICO GLOBAL (NuveM)</button>
-        <button onclick="limparTudo()" style="background:#dc3545; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">⚠️ RESETAR BANCO DE DADOS</button>
+        <button onclick="verLogs()" style="background:#17a2b8; color:white; padding:10px; border-radius:5px; border:none; cursor:pointer;">👁️ VER QUEM VOTOU EM QUEM</button>
+        <button onclick="limparTudo()" style="background:#dc3545; color:white; padding:10px; border-radius:5px; border:none; cursor:pointer;">⚠️ RESETAR TUDO</button>
     </div>
 </div>
-
 <div id="modal">
-    <div style="background:white; padding:30px; border-radius:15px; width:90%; max-width:600px; text-align:center;">
-        <h2>📜 Histórico Global de Votos</h2>
+    <div style="background:white; padding:30px; border-radius:15px; width:90%; max-width:550px; text-align:center;">
+        <h2>📜 Histórico Global</h2>
         <div id="modal-corpo"></div><br>
-        <button onclick="document.getElementById('modal').style.display='none'" style="width:100%; padding:10px; background: #ff4500; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">FECHAR</button>
+        <button onclick="document.getElementById('modal').style.display='none'" style="width:100%; padding:10px;">FECHAR</button>
     </div>
 </div>
-
 </body>
 </html>
