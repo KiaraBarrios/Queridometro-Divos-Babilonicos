@@ -2,200 +2,161 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Queridômetro Divos Babilônicos v3</title>
+    <title>Queridômetro Divos Babilônicos PRO</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // CONFIGURAÇÃO EXTRAÍDA DO SEU PRINT
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKE-wC2V20qRGJeP00jGC6Xs8jY1CzG3A",
+            authDomain: "queridometro-divos-babilonicos.firebaseapp.com",
+            projectId: "queridometro-divos-babilonicos",
+            storageBucket: "queridometro-divos-babilonicos.appspot.com",
+            messagingSenderId: "842485174612",
+            appId: "1:842485174612:web:3aa2363b9c091caa6d78c1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Senhas Individuais
+        const senhas = {
+            "Kiara": "2026", "Siqueira": "divo1", "Sofia": "diva2", "Gabis": "diva3", 
+            "Lari": "diva4", "Samuel": "divo5", "Melesque": "divo6", "Pedro": "divo7", 
+            "Vini": "divo8", "Thomaz": "divo9", "Adrian": "divo10", "Gui": "divo11", 
+            "João": "divo12", "Ju": "diva13", "Marco": "divo14", "Marcos": "divo15", 
+            "Nick": "divo16", "Oscar": "divo17", "Vitinho": "divo18"
+        };
+
+        let usuarioLogado = null;
+        const nomes = Object.keys(senhas);
+
+        // Sincronização Realtime
+        onValue(ref(db, 'participantes'), (snapshot) => {
+            const data = snapshot.val() || {};
+            atualizarPainel(data);
+        });
+
+        window.fazerLogin = () => {
+            const u = document.getElementById('loginUsuario').value;
+            const s = document.getElementById('loginSenha').value;
+            if (senhas[u] === s) {
+                usuarioLogado = u;
+                document.getElementById('nomeLogado').textContent = u;
+                document.getElementById('tela-login').style.display = 'none';
+                document.getElementById('tela-principal').style.display = 'block';
+                if(u === "Kiara") document.getElementById('area-admin').style.display = 'flex';
+            } else { alert("Senha incorreta!"); }
+        };
+
+        window.votarDireto = (paraNome, emoji) => {
+            if (usuarioLogado === paraNome) return alert("Não pode votar em si mesmo!");
+            
+            // Grava Log na Nuvem (Agora você verá o do Siqueira!)
+            push(ref(db, 'logs'), {
+                de: usuarioLogado,
+                para: paraNome,
+                emoji: emoji,
+                data: new Date().toLocaleString()
+            });
+
+            // Incrementa contador global
+            const currentVal = parseInt(document.getElementById(`count-${paraNome}-${emoji}`).textContent.replace(/[^0-9]/g, "")) || 0;
+            update(ref(db, `participantes/${paraNome}/reacoes`), { [emoji]: currentVal + 1 });
+        };
+
+        function atualizarPainel(data) {
+            const painel = document.getElementById('painel');
+            painel.innerHTML = '';
+            nomes.forEach(nome => {
+                const p = data[nome] || { reacoes: { coracao:0, cobra:0, vomito:0, planta:0, alvo:0, mala:0, biscoito:0, bomba:0 } };
+                const nomeArquivo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const reacoes = p.reacoes || {};
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil" onerror="this.src='./fotos/${nomeArquivo}.jpg'; this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${nome}'}">
+                    <h3>${nome}</h3>
+                    <div class="contadores">
+                        <span id="count-${nome}-coracao">❤️${reacoes.coracao || 0}</span>
+                        <span id="count-${nome}-cobra">🐍${reacoes.cobra || 0}</span>
+                        <span id="count-${nome}-vomito">🤮${reacoes.vomito || 0}</span>
+                        <span id="count-${nome}-alvo">🎯${reacoes.alvo || 0}</span>
+                    </div>
+                    <div class="voto-rapido">
+                        <button onclick="votarDireto('${nome}', 'coracao')">❤️</button>
+                        <button onclick="votarDireto('${nome}', 'cobra')">🐍</button>
+                        <button onclick="votarDireto('${nome}', 'vomito')">🤮</button>
+                        <button onclick="votarDireto('${nome}', 'alvo')">🎯</button>
+                    </div>`;
+                painel.appendChild(card);
+            });
+        }
+
+        window.verLogs = () => {
+            onValue(ref(db, 'logs'), (snapshot) => {
+                const logs = snapshot.val();
+                let html = "<div style='text-align:left; max-height:300px; overflow-y:auto; background:#eee; padding:10px; border-radius:5px;'>";
+                if(logs) {
+                    Object.values(logs).reverse().forEach(l => {
+                        html += `• <strong>${l.de}</strong> deu ${l.emoji} para <strong>${l.para}</strong> <small>(${l.data})</small><br>`;
+                    });
+                } else { html += "Nenhum voto global ainda."; }
+                document.getElementById('modal-corpo').innerHTML = html + "</div>";
+                document.getElementById('modal').style.display = 'flex';
+            }, { onlyOnce: true });
+        };
+
+        window.limparTudo = () => {
+            if(confirm("ZERAR BANCO DE DADOS?")) set(ref(db, '/'), { participantes: {}, logs: {} });
+        };
+
+        const loginSel = document.getElementById('loginUsuario');
+        nomes.sort().forEach(n => loginSel.add(new Option(n, n)));
+    </script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        #tela-login { display: block; max-width: 400px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 2px solid #ff4500; }
-        #tela-principal { display: none; }
-
-        /* LISTA DE CARDS */
-        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-        .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; background: #fff; text-align: center; position: relative; transition: 0.3s; }
-        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; }
-        
-        /* BORDAS DINÂMICAS */
-        .odiado { border-color: #ff0000 !important; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
-        .alvo-casa { border-color: #007bff !important; box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); }
-        .favorito { border-color: #ffc107 !important; box-shadow: 0 0 15px rgba(255, 193, 7, 0.4); }
-
-        /* BOTÕES DE VOTO RÁPIDO */
-        .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
-        .btn-emoji { background: #f0f2f5; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2em; padding: 5px; transition: 0.2s; }
-        .btn-emoji:hover { background: #e4e6eb; transform: scale(1.2); }
-        .btn-emoji:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
-
-        /* INTERFACE */
-        .user-info { background: #1877f2; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .area-admin { display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px dashed #ccc; }
-        
-        button { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-voto { background-color: #ff4500; color: white; }
-        
-        .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.75em; margin: 10px 0; color: #666; }
-
-        /* MODAL */
-        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; }
-        .modal-content { background:white; padding:30px; border-radius:15px; width:90%; max-width:600px; text-align:center; }
-        .log-votos { text-align: left; max-height: 250px; overflow-y: auto; font-size: 0.9em; background: #eee; padding: 10px; border-radius: 5px; margin: 15px 0; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .card { border: 1px solid #ddd; padding: 15px; border-radius: 10px; text-align: center; }
+        .foto-perfil { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
+        .contadores { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 0.8em; margin: 10px 0; }
+        .voto-rapido button { font-size: 1.2em; cursor: pointer; border: none; background: none; }
+        .area-admin { display: none; gap: 10px; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+        #tela-login { max-width: 350px; margin: 100px auto; text-align: center; padding: 30px; border: 1px solid #ff4500; border-radius: 10px; background: white; }
     </style>
 </head>
 <body>
 
 <div id="tela-login">
-    <h1 style="color: #ff4500;">👁️ <br>Divos Babilônicos</h1>
-    <select id="loginUsuario" style="width: 100%; padding: 10px; margin-bottom: 10px;"></select>
-    <input type="password" id="loginSenha" placeholder="Senha (123)" style="width: 94%; padding: 10px;">
-    <button onclick="fazerLogin()" style="width: 100%; margin-top: 20px;" class="btn-voto">ENTRAR</button>
+    <h1 style="color:#ff4500;">👁️ Divos PRO</h1>
+    <select id="loginUsuario" style="width:100%; padding:10px;"></select><br><br>
+    <input type="password" id="loginSenha" placeholder="Senha" style="width:92%; padding:10px;"><br><br>
+    <button onclick="fazerLogin()" style="width:100%; padding:10px; background:#ff4500; color:white; border:none; border-radius:5px; cursor:pointer;">ENTRAR</button>
 </div>
 
-<div id="tela-principal" class="container">
-    <div class="user-info">
-        <span>👤 Confessionário: <strong id="nomeLogado"></strong></span>
-        <button onclick="logout()" style="background:#606770; color: white;">SAIR</button>
+<div id="tela-principal" class="container" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; margin-bottom:20px;">
+        <p>👤 <strong><span id="nomeLogado"></span></strong></p>
+        <button onclick="location.reload()">Sair</button>
     </div>
-
     <div class="lista-participantes" id="painel"></div>
-
     <div id="area-admin" class="area-admin">
-        <h3>📊 Painel de Controle (Kiara)</h3>
-        <button onclick="verLogs()" style="background:#17a2b8; color:white;">👁️ Ver Quem Votou em Quem</button>
-        <button onclick="abrirResumoMensal()" style="background:#ffc107;">📊 Ranking Mensal</button>
-        <button onclick="limparTudo()" style="background:#dc3545; color:white;">⚠️ Resetar Mês</button>
+        <button onclick="verLogs()" style="padding:10px; background:#17a2b8; color:white; border:none; border-radius:5px; cursor:pointer;">👁️ Ver Histórico de Todos</button>
+        <button onclick="limparTudo()" style="padding:10px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer;">⚠️ Resetar Mês</button>
     </div>
 </div>
 
 <div id="modal">
-    <div class="modal-content">
-        <h2 id="modal-titulo"></h2>
-        <div id="modal-corpo"></div>
-        <button onclick="fecharModal()" class="btn-voto" style="width:100%">VOLTAR</button>
+    <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:500px; text-align:center;">
+        <h2>📜 Votos da Galera</h2>
+        <div id="modal-corpo"></div><br>
+        <button onclick="document.getElementById('modal').style.display='none'" style="width:100%; padding:10px;">FECHAR</button>
     </div>
 </div>
 
-<script>
-    const nomes = ["Kiara", "Siqueira", "Sofia", "Gabis", "Lari", "Samuel", "Melesque", "Pedro", "Vini", "Thomaz", "Adrian", "Gui", "João", "Ju", "Marco", "Marcos", "Nick", "Oscar", "Vitinho"];
-    let usuarioLogado = null;
-
-    let participantes = JSON.parse(localStorage.getItem('bbb_participantes')) || nomes.map(n => ({
-        nome: n, reacoes: { coracao:0, cobra:0, vomito:0, planta:0, alvo:0, mala:0, biscoito:0, bomba:0 }
-    }));
-
-    // Array de logs para salvar quem votou em quem
-    let logsVotos = JSON.parse(localStorage.getItem('bbb_logs')) || [];
-    let votosHoje = JSON.parse(localStorage.getItem('bbb_votos_hoje')) || {};
-
-    function inicializar() {
-        const loginSel = document.getElementById('loginUsuario');
-        nomes.sort().forEach(n => loginSel.add(new Option(n, n)));
-        atualizarPainel();
-    }
-
-    function fazerLogin() {
-        const u = document.getElementById('loginUsuario').value;
-        if (document.getElementById('loginSenha').value === "123") {
-            usuarioLogado = u;
-            document.getElementById('nomeLogado').textContent = u;
-            document.getElementById('tela-login').style.display = 'none';
-            document.getElementById('tela-principal').style.display = 'block';
-            if(u === "Kiara") document.getElementById('area-admin').style.display = 'block';
-            atualizarPainel();
-        } else { alert("Senha incorreta!"); }
-    }
-
-    function votarDireto(paraNome, emoji) {
-        if (usuarioLogado === paraNome) return alert("Não pode votar em si mesmo!");
-        const chave = `${usuarioLogado}-${paraNome}`;
-        if (votosHoje[chave]) return alert("Você já votou nesta pessoa hoje!");
-
-        // Registra o voto
-        const alvo = participantes.find(p => p.nome === paraNome);
-        alvo.reacoes[emoji]++;
-        votosHoje[chave] = true;
-        
-        // Salva nos logs para a Kiara ver
-        logsVotos.push({ de: usuarioLogado, para: paraNome, emoji: emoji, data: new Date().toLocaleString() });
-
-        localStorage.setItem('bbb_participantes', JSON.stringify(participantes));
-        localStorage.setItem('bbb_votos_hoje', JSON.stringify(votosHoje));
-        localStorage.setItem('bbb_logs', JSON.stringify(logsVotos));
-        
-        atualizarPainel();
-    }
-
-    function atualizarPainel() {
-        const painel = document.getElementById('painel');
-        painel.innerHTML = '';
-        
-        let maxOdiado = 0, maxAlvo = 0, maxFav = 0;
-        let pOdiado = "", pAlvo = "", pFav = "";
-
-        participantes.forEach(p => {
-            let odiadoScore = p.reacoes.cobra + p.reacoes.vomito;
-            if (odiadoScore > maxOdiado) { maxOdiado = odiadoScore; pOdiado = p.nome; }
-            if (p.reacoes.alvo > maxAlvo) { maxAlvo = p.reacoes.alvo; pAlvo = p.nome; }
-            if (p.reacoes.coracao > maxFav) { maxFav = p.reacoes.coracao; pFav = p.nome; }
-        });
-
-        participantes.forEach(p => {
-            let classeBorda = "", badge = "";
-            if (p.nome === pOdiado && maxOdiado > 0) { classeBorda = "odiado"; badge = '<span class="status-badge badge-red">Odiado</span>'; }
-            else if (p.nome === pAlvo && maxAlvo > 0) { classeBorda = "alvo-casa"; badge = '<span class="status-badge badge-blue">Alvo</span>'; }
-            else if (p.nome === pFav && maxFav > 0) { classeBorda = "favorito"; badge = '<span class="status-badge badge-gold">Favorito</span>'; }
-
-            const nomeArquivo = p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const jaVotou = votosHoje[`${usuarioLogado}-${p.nome}`];
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                ${badge}
-                <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil ${classeBorda}" onerror="this.src='./fotos/${nomeArquivo}.jpg'; this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}">
-                <h3>${p.nome}</h3>
-                <div class="contadores">
-                    <span>❤️${p.reacoes.coracao}</span><span>🐍${p.reacoes.cobra}</span><span>🤮${p.reacoes.vomito}</span><span>🌱${p.reacoes.planta}</span>
-                    <span>🎯${p.reacoes.alvo}</span><span>💼${p.reacoes.mala}</span><span>🍪${p.reacoes.biscoito}</span><span>💣${p.reacoes.bomba}</span>
-                </div>
-                <div class="voto-rapido">
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'coracao')" ${jaVotou ? 'disabled' : ''}>❤️</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'cobra')" ${jaVotou ? 'disabled' : ''}>🐍</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'vomito')" ${jaVotou ? 'disabled' : ''}>🤮</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'planta')" ${jaVotou ? 'disabled' : ''}>🌱</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'alvo')" ${jaVotou ? 'disabled' : ''}>🎯</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'mala')" ${jaVotou ? 'disabled' : ''}>💼</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'biscoito')" ${jaVotou ? 'disabled' : ''}>🍪</button>
-                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'bomba')" ${jaVotou ? 'disabled' : ''}>💣</button>
-                </div>`;
-            painel.appendChild(card);
-        });
-    }
-
-    function verLogs() {
-        document.getElementById('modal-titulo').textContent = "📜 Histórico de Votos";
-        let html = "<div class='log-votos'>";
-        logsVotos.slice().reverse().forEach(l => {
-            const emojis = {coracao:'❤️', cobra:'🐍', vomito:'🤮', planta:'🌱', alvo:'🎯', mala:'💼', biscoito:'🍪', bomba:'💣'};
-            html += `• <strong>${l.de}</strong> deu ${emojis[l.emoji]} para <strong>${l.para}</strong> <small>(${l.data})</small><br>`;
-        });
-        document.getElementById('modal-corpo').innerHTML = html + "</div>";
-        document.getElementById('modal').style.display = 'flex';
-    }
-
-    function abrirResumoMensal() {
-        document.getElementById('modal-titulo').textContent = "📊 Ranking Geral";
-        let html = "<ul>";
-        participantes.sort((a,b) => b.reacoes.coracao - a.reacoes.coracao).forEach(p => {
-            html += `<li><strong>${p.nome}</strong>: ❤️${p.reacoes.coracao} | 🐍${p.reacoes.cobra} | 🎯${p.reacoes.alvo}</li>`;
-        });
-        document.getElementById('modal-corpo').innerHTML = html + "</ul>";
-        document.getElementById('modal').style.display = 'flex';
-    }
-
-    function fecharModal() { document.getElementById('modal').style.display = 'none'; }
-    function limparTudo() { if(confirm("Deseja zerar tudo?")) { localStorage.clear(); location.reload(); } }
-    function logout() { location.reload(); }
-    window.onload = inicializar;
-</script>
 </body>
 </html>
