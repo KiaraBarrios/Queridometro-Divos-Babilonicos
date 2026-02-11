@@ -4,15 +4,12 @@
     <meta charset="UTF-8">
     <title>Queridômetro Divos Babilônicos</title>
     <style>
-        /* CSS: Identidade Visual e Layout */
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
         .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* TELAS */
         #tela-login { display: block; max-width: 450px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 2px solid #ff4500; }
         #tela-principal { display: none; }
 
-        /* CARDS E BORDAS */
         .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; background: #fff; text-align: center; position: relative; transition: 0.3s; }
         .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; transition: 0.3s; }
@@ -26,7 +23,6 @@
         .badge-blue { background: #007bff; }
         .badge-gold { background: #ffc107; color: black; }
 
-        /* INTERFACE */
         .controles { background: #fff1eb; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #ffd8c7; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
         .user-info { background: #1877f2; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         
@@ -36,32 +32,29 @@
 
         .contadores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.85em; background: #f9f9f9; padding: 10px; border-radius: 8px; }
 
-        /* MODAL */
         #modal-mensal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
         #modal-mensal.ativo { display: flex; }
-        .modal-content { background: white; width: 90%; max-width: 550px; padding: 30px; border-radius: 15px; text-align: center; position: relative; }
+        .modal-content { background: white; width: 90%; max-width: 550px; padding: 30px; border-radius: 15px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="tela-login">
-    <h1>👁️ <br>Divos Babilônicos</h1>
-    <p>Bem-vindo ao confessionário!</p>
+    <h1 style="color: #ff4500;">👁️ <br>Divos Babilônicos</h1>
     <select id="loginUsuario" style="width: 100%; padding: 10px; margin-bottom: 10px;"></select>
-    <input type="password" id="loginSenha" placeholder="Senha (padrão: 123)" style="width: 94%; padding: 10px;">
+    <input type="password" id="loginSenha" placeholder="Senha (123)" style="width: 94%; padding: 10px;">
     <button onclick="fazerLogin()" style="width: 100%; margin-top: 20px;" class="btn-voto">ENTRAR</button>
 </div>
 
 <div id="tela-principal" class="container">
     <div class="user-info">
-        <span>👤 Bem-vinda ao confessionário, <strong id="nomeLogado"></strong>!</span>
+        <span>👤 Confessionário: <strong id="nomeLogado"></strong></span>
         <button onclick="logout()" style="background:#606770;">SAIR</button>
     </div>
 
     <div class="controles">
         <strong>Votar em:</strong>
         <select id="selectPara" style="padding: 10px;"></select>
-        <strong>Emoji:</strong>
         <select id="selectEmoji" style="padding: 10px;">
             <option value="coracao">❤️ Coração</option>
             <option value="cobra">🐍 Cobra</option>
@@ -79,20 +72,19 @@
 
     <div id="area-admin" class="btn-admin">
         <button onclick="abrirResumoMensal()" style="background:#17a2b8; color:white;">📊 Estatísticas Completas</button>
-        <button onclick="limparTudo()" style="background:#dc3545; color:white;">⚠️ Resetar Todo o Mês</button>
+        <button onclick="limparTudo()" style="background:#dc3545; color:white;">⚠️ Resetar Mês</button>
     </div>
 </div>
 
 <div id="modal-mensal">
     <div class="modal-content">
-        <h2>Ranking Babilônico Mensal</h2>
+        <h2>Ranking Mensal</h2>
         <div id="dados-mensais" style="text-align: left; max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
         <button onclick="fecharModal()" class="btn-voto" style="width:100%">FECHAR</button>
     </div>
 </div>
 
 <script>
-    /* LÓGICA DO SISTEMA */
     const nomes = ["Kiara", "Siqueira", "Sofia", "Gabis", "Lari", "Samuel", "Melesque", "Pedro", "Vini", "Thomaz", "Adrian", "Gui", "João", "Ju", "Marco", "Marcos", "Nick", "Oscar", "Vitinho"];
     let usuarioLogado = null;
 
@@ -115,13 +107,11 @@
 
     function fazerLogin() {
         const u = document.getElementById('loginUsuario').value;
-        const s = document.getElementById('loginSenha').value;
-        if (s === "123") {
+        if (document.getElementById('loginSenha').value === "123") {
             usuarioLogado = u;
             document.getElementById('nomeLogado').textContent = u;
             document.getElementById('tela-login').style.display = 'none';
             document.getElementById('tela-principal').style.display = 'block';
-            // Trava de segurança para a Kiara
             if(u === "Kiara") document.getElementById('area-admin').style.display = 'flex';
         } else { alert("Senha incorreta!"); }
     }
@@ -129,21 +119,21 @@
     function darEmoji() {
         const para = document.getElementById('selectPara').value;
         const emoji = document.getElementById('selectEmoji').value;
-        if (usuarioLogado === para) { alert("Não pode votar em si mesmo!"); return; }
         const chave = `${usuarioLogado}-${para}`;
-        if (votosRealizados[chave]) { alert("Você já votou nesta pessoa hoje!"); return; }
+        if (usuarioLogado === para) return alert("Não pode votar em si mesmo!");
+        if (votosRealizados[chave]) return alert("Voto já realizado!");
 
-        const alvo = participantes.find(p => p.nome === para);
-        alvo.reacoes[emoji]++;
+        participantes.find(p => p.nome === para).reacoes[emoji]++;
         votosRealizados[chave] = true;
-        salvar();
+        localStorage.setItem('bbb_participantes', JSON.stringify(participantes));
+        localStorage.setItem('bbb_votos', JSON.stringify(votosRealizados));
         atualizarPainel();
     }
 
     function atualizarPainel() {
         const painel = document.getElementById('painel');
         painel.innerHTML = '';
-
+        
         let maxOdiado = 0, maxAlvo = 0, maxFav = 0;
         let pOdiado = "", pAlvo = "", pFav = "";
 
@@ -160,14 +150,15 @@
             else if (p.nome === pAlvo && maxAlvo > 0) { classeBorda = "alvo-casa"; badge = '<span class="status-badge badge-blue">Alvo</span>'; }
             else if (p.nome === pFav && maxFav > 0) { classeBorda = "favorito"; badge = '<span class="status-badge badge-gold">Favorito</span>'; }
 
-            // Lógica robusta para fotos (sem acentos e tenta .jpg/.png)
-            const nomeBase = p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s/g, "");
+            // Lógica para carregar fotos do GitHub (Pasta fotos/ e sem acentos)
+            const nomeArquivo = p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
                 ${badge}
-                <img src="fotos/${nomeBase}.jpg" class="foto-perfil ${classeBorda}" 
-                     onerror="this.onerror=function(){this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}; this.src='fotos/${nomeBase}.png'}; this.src='fotos/${nomeBase}.jpeg'">
+                <img src="./fotos/${nomeArquivo}.jpg" class="foto-perfil ${classeBorda}" 
+                     onerror="this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}; this.src='./fotos/${nomeArquivo}.png'">
                 <h3>${p.nome}</h3>
                 <div class="contadores">
                     <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span>
@@ -180,23 +171,16 @@
 
     function abrirResumoMensal() {
         const dados = document.getElementById('dados-mensais');
-        let ranking = [...participantes].sort((a,b) => b.reacoes.coracao - a.reacoes.coracao);
-        let html = "<ul style='list-style:none; padding:0;'>";
-        ranking.forEach(p => {
-            html += `<li style="padding:10px; border-bottom:1px solid #eee;">
-                <strong>${p.nome}</strong><br>
-                <div style="display:grid; grid-template-columns: repeat(4, 1fr); font-size:0.8em; margin-top:5px;">
-                    <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span><span>🌱 ${p.reacoes.planta}</span>
-                    <span>🎯 ${p.reacoes.alvo}</span><span>💼 ${p.reacoes.mala}</span><span>🍪 ${p.reacoes.biscoito}</span><span>💣 ${p.reacoes.bomba}</span>
-                </div></li>`;
+        let html = "<ul>";
+        participantes.forEach(p => {
+            html += `<li><strong>${p.nome}:</strong> ❤️${p.reacoes.coracao} | 🐍${p.reacoes.cobra} | 🎯${p.reacoes.alvo} | 🤮${p.reacoes.vomito} | 💼${p.reacoes.mala} | 🍪${p.reacoes.biscoito}</li>`;
         });
         dados.innerHTML = html + "</ul>";
         document.getElementById('modal-mensal').classList.add('ativo');
     }
 
     function fecharModal() { document.getElementById('modal-mensal').classList.remove('ativo'); }
-    function salvar() { localStorage.setItem('bbb_participantes', JSON.stringify(participantes)); localStorage.setItem('bbb_votos', JSON.stringify(votosRealizados)); }
-    function limparTudo() { if(confirm("Zerar tudo?")) { localStorage.clear(); location.reload(); } }
+    function limparTudo() { if(confirm("Resetar?")) { localStorage.clear(); location.reload(); } }
     function logout() { location.reload(); }
     window.onload = inicializar;
 </script>
