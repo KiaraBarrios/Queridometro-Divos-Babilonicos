@@ -2,48 +2,49 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Queridômetro Divos Babilônicos</title>
+    <title>Queridômetro Divos Babilônicos v3</title>
     <style>
-        /* CSS: Estilo e Identidade */
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        #tela-login { display: block; max-width: 450px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 2px solid #ff4500; }
+        #tela-login { display: block; max-width: 400px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 2px solid #ff4500; }
         #tela-principal { display: none; }
 
-        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+        /* LISTA DE CARDS */
+        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
         .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; background: #fff; text-align: center; position: relative; transition: 0.3s; }
-        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; transition: 0.4s; }
-        .foto-perfil:hover { transform: scale(1.1); }
+        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 5px solid #ccc; }
         
+        /* BORDAS DINÂMICAS */
         .odiado { border-color: #ff0000 !important; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
         .alvo-casa { border-color: #007bff !important; box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); }
         .favorito { border-color: #ffc107 !important; box-shadow: 0 0 15px rgba(255, 193, 7, 0.4); }
 
-        .status-badge { position: absolute; top: 10px; right: 10px; font-size: 0.7em; font-weight: bold; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; color: white; z-index: 10; }
-        .badge-red { background: #ff0000; }
-        .badge-blue { background: #007bff; }
-        .badge-gold { background: #ffc107; color: black; }
+        /* BOTÕES DE VOTO RÁPIDO */
+        .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
+        .btn-emoji { background: #f0f2f5; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2em; padding: 5px; transition: 0.2s; }
+        .btn-emoji:hover { background: #e4e6eb; transform: scale(1.2); }
+        .btn-emoji:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
 
-        .controles { background: #fff1eb; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #ffd8c7; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+        /* INTERFACE */
         .user-info { background: #1877f2; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .area-admin { display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px dashed #ccc; }
         
-        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
         .btn-voto { background-color: #ff4500; color: white; }
-        .btn-admin { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee; display: none; gap: 10px; justify-content: center; }
+        
+        .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.75em; margin: 10px 0; color: #666; }
 
-        .contadores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.85em; background: #f9f9f9; padding: 10px; border-radius: 8px; }
-
-        #modal-mensal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
-        #modal-mensal.ativo { display: flex; }
-        .modal-content { background: white; width: 90%; max-width: 550px; padding: 30px; border-radius: 15px; text-align: center; }
+        /* MODAL */
+        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; }
+        .modal-content { background:white; padding:30px; border-radius:15px; width:90%; max-width:600px; text-align:center; }
+        .log-votos { text-align: left; max-height: 250px; overflow-y: auto; font-size: 0.9em; background: #eee; padding: 10px; border-radius: 5px; margin: 15px 0; }
     </style>
 </head>
 <body>
 
 <div id="tela-login">
     <h1 style="color: #ff4500;">👁️ <br>Divos Babilônicos</h1>
-    <p>Acesse o Confessionário</p>
     <select id="loginUsuario" style="width: 100%; padding: 10px; margin-bottom: 10px;"></select>
     <input type="password" id="loginSenha" placeholder="Senha (123)" style="width: 94%; padding: 10px;">
     <button onclick="fazerLogin()" style="width: 100%; margin-top: 20px;" class="btn-voto">ENTRAR</button>
@@ -52,38 +53,24 @@
 <div id="tela-principal" class="container">
     <div class="user-info">
         <span>👤 Confessionário: <strong id="nomeLogado"></strong></span>
-        <button onclick="logout()" style="background:#606770;">SAIR</button>
-    </div>
-
-    <div class="controles">
-        <strong>Votar em:</strong>
-        <select id="selectPara" style="padding: 10px;"></select>
-        <select id="selectEmoji" style="padding: 10px;">
-            <option value="coracao">❤️ Coração</option>
-            <option value="cobra">🐍 Cobra</option>
-            <option value="vomito">🤮 Vômito</option>
-            <option value="planta">🌱 Planta</option>
-            <option value="alvo">🎯 Alvo</option>
-            <option value="mala">💼 Mala</option>
-            <option value="biscoito">🍪 Biscoito</option>
-            <option value="bomba">💣 Bomba</option>
-        </select>
-        <button onclick="darEmoji()" class="btn-voto">REGISTRAR VOTO</button>
+        <button onclick="logout()" style="background:#606770; color: white;">SAIR</button>
     </div>
 
     <div class="lista-participantes" id="painel"></div>
 
-    <div id="area-admin" class="btn-admin">
-        <button onclick="abrirResumoMensal()" style="background:#17a2b8; color:white;">📊 Estatísticas Mensais</button>
+    <div id="area-admin" class="area-admin">
+        <h3>📊 Painel de Controle (Kiara)</h3>
+        <button onclick="verLogs()" style="background:#17a2b8; color:white;">👁️ Ver Quem Votou em Quem</button>
+        <button onclick="abrirResumoMensal()" style="background:#ffc107;">📊 Ranking Mensal</button>
         <button onclick="limparTudo()" style="background:#dc3545; color:white;">⚠️ Resetar Mês</button>
     </div>
 </div>
 
-<div id="modal-mensal">
+<div id="modal">
     <div class="modal-content">
-        <h2>📊 Ranking Completo</h2>
-        <div id="dados-mensais" style="text-align: left; max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
-        <button onclick="fecharModal()" class="btn-voto" style="width:100%">FECHAR</button>
+        <h2 id="modal-titulo"></h2>
+        <div id="modal-corpo"></div>
+        <button onclick="fecharModal()" class="btn-voto" style="width:100%">VOLTAR</button>
     </div>
 </div>
 
@@ -92,19 +79,16 @@
     let usuarioLogado = null;
 
     let participantes = JSON.parse(localStorage.getItem('bbb_participantes')) || nomes.map(n => ({
-        nome: n,
-        reacoes: { coracao: 0, cobra: 0, vomito: 0, planta: 0, alvo: 0, mala: 0, biscoito: 0, bomba: 0 }
+        nome: n, reacoes: { coracao:0, cobra:0, vomito:0, planta:0, alvo:0, mala:0, biscoito:0, bomba:0 }
     }));
 
-    let votosRealizados = JSON.parse(localStorage.getItem('bbb_votos')) || {};
+    // Array de logs para salvar quem votou em quem
+    let logsVotos = JSON.parse(localStorage.getItem('bbb_logs')) || [];
+    let votosHoje = JSON.parse(localStorage.getItem('bbb_votos_hoje')) || {};
 
     function inicializar() {
         const loginSel = document.getElementById('loginUsuario');
-        const selectPara = document.getElementById('selectPara');
-        nomes.sort().forEach(n => {
-            loginSel.add(new Option(n, n));
-            selectPara.add(new Option(n, n));
-        });
+        nomes.sort().forEach(n => loginSel.add(new Option(n, n)));
         atualizarPainel();
     }
 
@@ -115,21 +99,28 @@
             document.getElementById('nomeLogado').textContent = u;
             document.getElementById('tela-login').style.display = 'none';
             document.getElementById('tela-principal').style.display = 'block';
-            if(u === "Kiara") document.getElementById('area-admin').style.display = 'flex';
+            if(u === "Kiara") document.getElementById('area-admin').style.display = 'block';
+            atualizarPainel();
         } else { alert("Senha incorreta!"); }
     }
 
-    function darEmoji() {
-        const para = document.getElementById('selectPara').value;
-        const emoji = document.getElementById('selectEmoji').value;
-        const chave = `${usuarioLogado}-${para}`;
-        if (usuarioLogado === para) return alert("Não pode votar em si mesmo!");
-        if (votosRealizados[chave]) return alert("Você já votou nesta pessoa!");
+    function votarDireto(paraNome, emoji) {
+        if (usuarioLogado === paraNome) return alert("Não pode votar em si mesmo!");
+        const chave = `${usuarioLogado}-${paraNome}`;
+        if (votosHoje[chave]) return alert("Você já votou nesta pessoa hoje!");
 
-        participantes.find(p => p.nome === para).reacoes[emoji]++;
-        votosRealizados[chave] = true;
+        // Registra o voto
+        const alvo = participantes.find(p => p.nome === paraNome);
+        alvo.reacoes[emoji]++;
+        votosHoje[chave] = true;
+        
+        // Salva nos logs para a Kiara ver
+        logsVotos.push({ de: usuarioLogado, para: paraNome, emoji: emoji, data: new Date().toLocaleString() });
+
         localStorage.setItem('bbb_participantes', JSON.stringify(participantes));
-        localStorage.setItem('bbb_votos', JSON.stringify(votosRealizados));
+        localStorage.setItem('bbb_votos_hoje', JSON.stringify(votosHoje));
+        localStorage.setItem('bbb_logs', JSON.stringify(logsVotos));
+        
         atualizarPainel();
     }
 
@@ -153,42 +144,56 @@
             else if (p.nome === pAlvo && maxAlvo > 0) { classeBorda = "alvo-casa"; badge = '<span class="status-badge badge-blue">Alvo</span>'; }
             else if (p.nome === pFav && maxFav > 0) { classeBorda = "favorito"; badge = '<span class="status-badge badge-gold">Favorito</span>'; }
 
-            // LÓGICA DE FOTOS: Prioriza .jpeg conforme seu GitHub e remove acentos do nome
             const nomeArquivo = p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            
+            const jaVotou = votosHoje[`${usuarioLogado}-${p.nome}`];
+
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
                 ${badge}
-                <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil ${classeBorda}" 
-                     onerror="this.onerror=function(){this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}; this.src='./fotos/${nomeArquivo}.png'}; this.src='./fotos/${nomeArquivo}.jpg'">
+                <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil ${classeBorda}" onerror="this.src='./fotos/${nomeArquivo}.jpg'; this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${p.nome}&background=random'}">
                 <h3>${p.nome}</h3>
                 <div class="contadores">
-                    <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span>
-                    <span>🌱 ${p.reacoes.planta}</span><span>🎯 ${p.reacoes.alvo}</span><span>💼 ${p.reacoes.mala}</span>
-                    <span>🍪 ${p.reacoes.biscoito}</span><span>💣 ${p.reacoes.bomba}</span>
+                    <span>❤️${p.reacoes.coracao}</span><span>🐍${p.reacoes.cobra}</span><span>🤮${p.reacoes.vomito}</span><span>🌱${p.reacoes.planta}</span>
+                    <span>🎯${p.reacoes.alvo}</span><span>💼${p.reacoes.mala}</span><span>🍪${p.reacoes.biscoito}</span><span>💣${p.reacoes.bomba}</span>
+                </div>
+                <div class="voto-rapido">
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'coracao')" ${jaVotou ? 'disabled' : ''}>❤️</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'cobra')" ${jaVotou ? 'disabled' : ''}>🐍</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'vomito')" ${jaVotou ? 'disabled' : ''}>🤮</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'planta')" ${jaVotou ? 'disabled' : ''}>🌱</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'alvo')" ${jaVotou ? 'disabled' : ''}>🎯</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'mala')" ${jaVotou ? 'disabled' : ''}>💼</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'biscoito')" ${jaVotou ? 'disabled' : ''}>🍪</button>
+                    <button class="btn-emoji" onclick="votarDireto('${p.nome}', 'bomba')" ${jaVotou ? 'disabled' : ''}>💣</button>
                 </div>`;
             painel.appendChild(card);
         });
     }
 
-    function abrirResumoMensal() {
-        const dados = document.getElementById('dados-mensais');
-        let html = "<ul style='list-style:none; padding:0;'>";
-        participantes.sort((a,b) => b.reacoes.coracao - a.reacoes.coracao).forEach(p => {
-            html += `<li style="padding:10px; border-bottom:1px solid #eee;">
-                <strong>${p.nome}</strong><br>
-                <div style="display:grid; grid-template-columns: repeat(4, 1fr); font-size:0.8em; margin-top:5px;">
-                    <span>❤️ ${p.reacoes.coracao}</span><span>🐍 ${p.reacoes.cobra}</span><span>🤮 ${p.reacoes.vomito}</span><span>🌱 ${p.reacoes.planta}</span>
-                    <span>🎯 ${p.reacoes.alvo}</span><span>💼 ${p.reacoes.mala}</span><span>🍪 ${p.reacoes.biscoito}</span><span>💣 ${p.reacoes.bomba}</span>
-                </div></li>`;
+    function verLogs() {
+        document.getElementById('modal-titulo').textContent = "📜 Histórico de Votos";
+        let html = "<div class='log-votos'>";
+        logsVotos.slice().reverse().forEach(l => {
+            const emojis = {coracao:'❤️', cobra:'🐍', vomito:'🤮', planta:'🌱', alvo:'🎯', mala:'💼', biscoito:'🍪', bomba:'💣'};
+            html += `• <strong>${l.de}</strong> deu ${emojis[l.emoji]} para <strong>${l.para}</strong> <small>(${l.data})</small><br>`;
         });
-        dados.innerHTML = html + "</ul>";
-        document.getElementById('modal-mensal').classList.add('ativo');
+        document.getElementById('modal-corpo').innerHTML = html + "</div>";
+        document.getElementById('modal').style.display = 'flex';
     }
 
-    function fecharModal() { document.getElementById('modal-mensal').classList.remove('ativo'); }
-    function limparTudo() { if(confirm("Deseja zerar as estatísticas do mês?")) { localStorage.clear(); location.reload(); } }
+    function abrirResumoMensal() {
+        document.getElementById('modal-titulo').textContent = "📊 Ranking Geral";
+        let html = "<ul>";
+        participantes.sort((a,b) => b.reacoes.coracao - a.reacoes.coracao).forEach(p => {
+            html += `<li><strong>${p.nome}</strong>: ❤️${p.reacoes.coracao} | 🐍${p.reacoes.cobra} | 🎯${p.reacoes.alvo}</li>`;
+        });
+        document.getElementById('modal-corpo').innerHTML = html + "</ul>";
+        document.getElementById('modal').style.display = 'flex';
+    }
+
+    function fecharModal() { document.getElementById('modal').style.display = 'none'; }
+    function limparTudo() { if(confirm("Deseja zerar tudo?")) { localStorage.clear(); location.reload(); } }
     function logout() { location.reload(); }
     window.onload = inicializar;
 </script>
