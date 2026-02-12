@@ -39,8 +39,13 @@
             return dataClone.toISOString().split('T')[0];
         }
 
-        function estaNoHorarioVotacao() {
-            return true; // Libera o voto agora para teste da Kiara
+         function estaNoHorarioVotacao() {
+             const agora = new Date();
+             const hora = agora.getHours();
+             // Abre as 15:00 e fecha as 12:00 do dia seguinte
+             // Ou seja, BLOQUEIA entre 12:01 e 14:59
+             if (hora >= 12 && hora < 15) return false;
+             return true;
         }
 
         window.fazerLogin = () => {
@@ -211,4 +216,5 @@
     </div>
 </body>
 </html>
+
 
