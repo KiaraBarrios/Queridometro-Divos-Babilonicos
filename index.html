@@ -40,12 +40,7 @@
         }
 
         function estaNoHorarioVotacao() {
-            const agora = new Date();
-            const hora = agora.getHours();
-            // Abre as 15:00 e fecha as 12:00 do dia seguinte
-            // Ou seja, BLOQUEIA entre 12:01 e 14:59
-            if (hora >= 12 && hora < 15) return false;
-            return true;
+            return true; // Libera o voto agora para teste da Kiara
         }
 
         window.fazerLogin = () => {
@@ -190,7 +185,7 @@
 </head>
 <body>
     <div id="tela-login">
-        <h1 style="color:var(--primary)">👑<br>Queridometro Divos Babilonicos</h1>
+        <h1 style="color:var(--primary)">👑<br>Queridometro</h1>
         <select id="loginUsuario"></select>
         <input type="password" id="loginSenha" placeholder="Senha">
         <button class="btn-main" onclick="fazerLogin()">ENTRAR NO CONFESSIONÁRIO</button>
@@ -216,3 +211,4 @@
     </div>
 </body>
 </html>
+
