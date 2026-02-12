@@ -2,10 +2,11 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Queridômetro Divos Babilônicos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queridômetro Divos Babilônicos v6.0</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKE-wC2V20qRGJeP00jGC6Xs8jY1CzG3A",
@@ -27,88 +28,117 @@
             "Nick": "divo16", "Oscar": "divo17", "Vitinho": "divo18"
         };
 
-        const nomes = Object.keys(senhas);
         let usuarioLogado = null;
-        let votosGlobaisHoje = {};
+        
+        // Função para pegar a "Data da Rodada" (Se for antes das 12h, ainda conta como a rodada do dia anterior)
+        function getRodadaAtual() {
+            const agora = new Date();
+            const hora = agora.getHours();
+            const dataClone = new Date(agora);
+            if (hora < 12) dataClone.setDate(agora.getDate() - 1);
+            return dataClone.toISOString().split('T')[0];
+        }
 
-        // Sincronização em tempo real
-        onValue(ref(db, '/'), (snapshot) => {
-            const data = snapshot.val() || {};
-            votosGlobaisHoje = data.votos_travados || {};
-            atualizarPainel(data.participantes || {});
-        });
+        function estaNoHorarioVotacao() {
+            const agora = new Date();
+            const hora = agora.getHours();
+            // Abre as 15:00 e fecha as 12:00 do dia seguinte
+            // Ou seja, BLOQUEIA entre 12:01 e 14:59
+            if (hora >= 12 && hora < 15) return false;
+            return true;
+        }
 
         window.fazerLogin = () => {
             const u = document.getElementById('loginUsuario').value;
             const s = document.getElementById('loginSenha').value;
             if (senhas[u] === s) {
                 usuarioLogado = u;
-                document.getElementById('nomeLogado').textContent = u;
                 document.getElementById('tela-login').style.display = 'none';
                 document.getElementById('tela-principal').style.display = 'block';
-                if(u === "Kiara") document.getElementById('area-admin').style.display = 'flex';
+                document.getElementById('nomeLogado').textContent = u;
+                if(u === "Kiara") document.getElementById('area-admin').style.display = 'block';
+                carregarDados();
             } else { alert("Senha incorreta!"); }
         };
 
-        window.votarDireto = async (paraNome, emoji) => {
-            if (usuarioLogado === paraNome) return alert("Não pode votar em si mesmo!");
+        function carregarDados() {
+            const rodada = getRodadaAtual();
+            onValue(ref(db, `rodadas/${rodada}`), (snapshot) => {
+                const data = snapshot.val() || { votos_travados: {}, participantes: {} };
+                atualizarPainel(data);
+            });
+        }
+
+        window.votarComJustificativa = async (paraNome, emoji) => {
+            if (!estaNoHorarioVotacao()) return alert("O confessionário está fechado! Abre às 15h e fecha às 12h.");
+            if (usuarioLogado === paraNome) return alert("Auto-voto não permitido!");
+
+            const rodada = getRodadaAtual();
+            const travaRef = ref(db, `rodadas/${rodada}/votos_travados/${usuarioLogado}_${paraNome}`);
             
-            const chaveVoto = `${usuarioLogado}_${paraNome}`;
+            const snapshot = await get(travaRef);
+            if (snapshot.exists()) return alert("Você já votou nesta pessoa hoje!");
+
+            const justificativa = prompt(`Por que você deu ${getEmojiChar(emoji)} para ${paraNome}? (Obrigatório)`);
             
-            // Verificação de segurança na nuvem
-            const checkVoto = await get(ref(db, `votos_travados/${chaveVoto}`));
-            if (checkVoto.exists()) {
-                alert("Você já votou nesta pessoa hoje!");
+            if (!justificativa || justificativa.trim().length < 3) {
+                alert("Você precisa dar uma justificativa real!");
                 return;
             }
 
-            // Registra trava de voto
-            await set(ref(db, `votos_travados/${chaveVoto}`), true);
+            // Salva Voto, Trava e Log
+            const updates = {};
+            updates[`rodadas/${rodada}/votos_travados/${usuarioLogado}_${paraNome}`] = true;
+            updates[`rodadas/${rodada}/logs/${push(ref(db)).key}`] = {
+                de: usuarioLogado, para: paraNome, emoji, justificativa, data: new Date().toLocaleString()
+            };
             
-            // Registra Log
-            push(ref(db, 'logs'), {
-                de: usuarioLogado, para: paraNome, emoji: emoji, data: new Date().toLocaleString()
-            });
+            // Incrementar contador
+            const refContador = ref(db, `rodadas/${rodada}/participantes/${paraNome}/reacoes/${emoji}`);
+            const currentSnap = await get(refContador);
+            const currentVal = currentSnap.val() || 0;
+            updates[`rodadas/${rodada}/participantes/${paraNome}/reacoes/${emoji}`] = currentVal + 1;
 
-            // Incrementa contador
-            const span = document.getElementById(`count-${paraNome}-${emoji}`);
-            const currentVal = parseInt(span.textContent.replace(/[^0-9]/g, "")) || 0;
-            update(ref(db, `participantes/${paraNome}/reacoes`), { [emoji]: currentVal + 1 });
+            set(ref(db, '/'), (await get(ref(db, '/'))).val()); // Mantém estrutura
+            updateDB(updates);
         };
 
-        function atualizarPainel(participantesData) {
-            const painel = document.getElementById('painel');
-            if (!painel) return;
-            painel.innerHTML = '';
-            
-            nomes.sort().forEach(nome => {
-                const p = participantesData[nome] || { reacoes: {} };
-                const r = p.reacoes || {};
-                const nomeArquivo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                const jaVotou = votosGlobaisHoje[`${usuarioLogado}_${nome}`];
+        async function updateDB(updates) {
+            for (let path in updates) {
+                await set(ref(db, path), updates[path]);
+            }
+        }
 
+        function atualizarPainel(data) {
+            const painel = document.getElementById('painel');
+            painel.innerHTML = '';
+            const rodada = getRodadaAtual();
+            const votosHoje = data.votos_travados || {};
+            const participantesData = data.participantes || {};
+
+            Object.keys(senhas).sort().forEach(nome => {
+                const r = (participantesData[nome] || {}).reacoes || {};
+                const jaVotou = votosHoje[`${usuarioLogado}_${nome}`];
+                const nomeArquivo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil" onerror="this.src='./fotos/${nomeArquivo}.jpg'; this.onerror=function(){this.src='https://ui-avatars.com/api/?name=${nome}'}">
+                    <img src="./fotos/${nomeArquivo}.jpeg" class="foto-perfil" onerror="this.src='https://ui-avatars.com/api/?name=${nome}'">
                     <h3>${nome}</h3>
                     <div class="contadores">
-                        <span id="count-${nome}-coracao">❤️${r.coracao || 0}</span>
-                        <span id="count-${nome}-cobra">🐍${r.cobra || 0}</span>
-                        <span id="count-${nome}-vomito">🤮${r.vomito || 0}</span>
-                        <span id="count-${nome}-planta">🌱${r.planta || 0}</span>
-                        <span id="count-${nome}-alvo">🎯${r.alvo || 0}</span>
-                        <span id="count-${nome}-mala">💼${r.mala || 0}</span>
-                        <span id="count-${nome}-biscoito">🍪${r.biscoito || 0}</span>
-                        <span id="count-${nome}-bomba">💣${r.bomba || 0}</span>
+                        ${['coracao','cobra','vomito','planta','alvo','mala','biscoito','bomba'].map(e => `
+                            <span>${getEmojiChar(e)}${r[e] || 0}</span>
+                        `).join('')}
                     </div>
                     <div class="voto-rapido">
                         ${['coracao','cobra','vomito','planta','alvo','mala','biscoito','bomba'].map(e => `
-                            <button onclick="votarDireto('${nome}', '${e}')" ${jaVotou ? 'disabled style="opacity:0.2"' : ''}>
+                            <button onclick="votarComJustificativa('${nome}', '${e}')" ${jaVotou || !estaNoHorarioVotacao() ? 'disabled' : ''}>
                                 ${getEmojiChar(e)}
                             </button>
                         `).join('')}
-                    </div>`;
+                    </div>
+                `;
                 painel.appendChild(card);
             });
         }
@@ -119,68 +149,70 @@
         }
 
         window.verLogs = () => {
-            onValue(ref(db, 'logs'), (snapshot) => {
+            const rodada = prompt("Qual data deseja ver? (AAAA-MM-DD)", getRodadaAtual());
+            onValue(ref(db, `rodadas/${rodada}/logs`), (snapshot) => {
                 const logs = snapshot.val();
-                let html = "<div style='text-align:left; max-height:300px; overflow-y:auto; background:#f4f4f4; padding:15px; border-radius:10px;'>";
+                let html = "<ul>";
                 if(logs) {
                     Object.values(logs).reverse().forEach(l => {
-                        html += `• <strong>${l.de}</strong> deu ${getEmojiChar(l.emoji) || l.emoji} para <strong>${l.para}</strong> <br>`;
+                        html += `<li><strong>${l.de}</strong> -> ${l.para} ${getEmojiChar(l.emoji)}: <em>"${l.justificativa}"</em></li>`;
                     });
                 }
-                document.getElementById('modal-corpo').innerHTML = html + "</div>";
+                document.getElementById('modal-corpo').innerHTML = html + "</ul>";
                 document.getElementById('modal').style.display = 'flex';
             }, { onlyOnce: true });
         };
 
-        window.limparTudo = () => {
-            if(confirm("Deseja ZERAR tudo (votos e travas)?")) set(ref(db, '/'), { participantes: {}, logs: {}, votos_travados: {} });
-        };
-
         window.onload = () => {
-            const loginSel = document.getElementById('loginUsuario');
-            nomes.sort().forEach(n => loginSel.add(new Option(n, n)));
+            const sel = document.getElementById('loginUsuario');
+            Object.keys(senhas).sort().forEach(n => sel.add(new Option(n, n)));
+            if (!estaNoHorarioVotacao()) alert("⚠️ O confessionário está fechado agora! Abre às 15h.");
         };
     </script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1250px; margin: auto; background: white; padding: 30px; border-radius: 15px; }
-        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-        .card { border: 1px solid #e4e6eb; padding: 15px; border-radius: 12px; text-align: center; background: #fff; }
-        .foto-perfil { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #eee; }
-        .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.8em; margin: 10px 0; background: #f9f9f9; padding: 8px; border-radius: 8px; }
-        .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; border-top: 1px solid #eee; padding-top: 10px; }
-        .voto-rapido button { font-size: 1.3em; cursor: pointer; border: none; background: none; padding: 5px; transition: 0.2s; }
-        .voto-rapido button:hover:not(:disabled) { transform: scale(1.3); }
-        .area-admin { display: none; gap: 10px; margin-top: 30px; border-top: 1px dashed #ccc; justify-content: center; padding-top: 20px; }
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
-        #tela-login { max-width: 400px; margin: 80px auto; text-align: center; background: white; padding: 40px; border-radius: 20px; border: 2px solid #ff4500; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        :root { --primary: #ff4500; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        @media (max-width: 600px) { .lista-participantes { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; } }
+        .card { border: 1px solid #eee; padding: 10px; border-radius: 15px; text-align: center; background: #fff; transition: 0.3s; }
+        .foto-perfil { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); }
+        .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; font-size: 0.7em; margin: 8px 0; background: #f8f9fa; padding: 5px; border-radius: 8px; }
+        .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+        .voto-rapido button { font-size: 1.2em; cursor: pointer; border: 1px solid #eee; background: white; border-radius: 8px; padding: 5px; }
+        .voto-rapido button:disabled { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
+        #tela-login { max-width: 350px; margin: 50px auto; padding: 30px; background: white; border-radius: 20px; text-align: center; border-top: 5px solid var(--primary); }
+        input, select, button.btn-main { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; }
+        button.btn-main { background: var(--primary); color: white; font-weight: bold; border: none; cursor: pointer; }
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
     </style>
 </head>
 <body>
-<div id="tela-login">
-    <h1 style="color:#ff4500;">👑 <br>Queridômetro</h1>
-    <select id="loginUsuario"></select>
-    <input type="password" id="loginSenha" placeholder="Senha Individual">
-    <button onclick="fazerLogin()" style="width:100%; padding:12px; background:#ff4500; color:white; border:none; border-radius:8px; cursor:pointer;">ENTRAR</button>
-</div>
-<div id="tela-principal" class="container" style="display:none;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <span>👤 <strong><span id="nomeLogado"></span></strong></span>
-        <button onclick="location.reload()">Sair</button>
+    <div id="tela-login">
+        <h1 style="color:var(--primary)">👑<br>Queridometro Divos Babilonicos</h1>
+        <select id="loginUsuario"></select>
+        <input type="password" id="loginSenha" placeholder="Senha">
+        <button class="btn-main" onclick="fazerLogin()">ENTRAR NO CONFESSIONÁRIO</button>
     </div>
-    <div class="lista-participantes" id="painel"></div>
-    <div id="area-admin" class="area-admin">
-        <button onclick="verLogs()" style="background:#17a2b8; color:white; padding:10px; border-radius:5px; border:none; cursor:pointer;">👁️ VER QUEM VOTOU EM QUEM</button>
-        <button onclick="limparTudo()" style="background:#dc3545; color:white; padding:10px; border-radius:5px; border:none; cursor:pointer;">⚠️ RESETAR TUDO</button>
+
+    <div id="tela-principal" class="container" style="display:none;">
+        <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <span>Olá, <strong id="nomeLogado"></strong>!</span>
+            <button onclick="location.reload()">Sair</button>
+        </header>
+        <div class="lista-participantes" id="painel"></div>
+        <div id="area-admin" style="display:none; margin-top:20px; border-top:1px dashed #ccc; padding-top:20px; text-align:center;">
+            <button onclick="verLogs()" style="padding:10px; background:#17a2b8; color:white; border:none; border-radius:8px;">👁️ VER AUDITORIA / JUSTIFICATIVAS</button>
+        </div>
     </div>
-</div>
-<div id="modal">
-    <div style="background:white; padding:30px; border-radius:15px; width:90%; max-width:550px; text-align:center;">
-        <h2>📜 Histórico Global</h2>
-        <div id="modal-corpo"></div><br>
-        <button onclick="document.getElementById('modal').style.display='none'" style="width:100%; padding:10px;">FECHAR</button>
+
+    <div id="modal">
+        <div class="modal-content">
+            <h2>📜 Histórico da Rodada</h2>
+            <div id="modal-corpo" style="text-align:left; font-size:0.9em;"></div>
+            <button class="btn-main" onclick="document.getElementById('modal').style.display='none'">FECHAR</button>
+        </div>
     </div>
-</div>
 </body>
 </html>
