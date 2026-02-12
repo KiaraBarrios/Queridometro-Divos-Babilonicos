@@ -2,8 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Queridômetro Divos Babilônicos v6.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Queridômetro Divos Babilônicos v6.1</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -30,7 +30,6 @@
 
         let usuarioLogado = null;
         
-        // Função para pegar a "Data da Rodada" (Se for antes das 12h, ainda conta como a rodada do dia anterior)
         function getRodadaAtual() {
             const agora = new Date();
             const hora = agora.getHours();
@@ -39,13 +38,11 @@
             return dataClone.toISOString().split('T')[0];
         }
 
-         function estaNoHorarioVotacao() {
-             const agora = new Date();
-             const hora = agora.getHours();
-             // Abre as 15:00 e fecha as 12:00 do dia seguinte
-             // Ou seja, BLOQUEIA entre 12:01 e 14:59
-             if (hora >= 12 && hora < 15) return false;
-             return true;
+        function estaNoHorarioVotacao() {
+            const agora = new Date();
+            const hora = agora.getHours();
+            if (hora >= 12 && hora < 15) return false;
+            return true;
         }
 
         window.fazerLogin = () => {
@@ -82,37 +79,28 @@
             const justificativa = prompt(`Por que você deu ${getEmojiChar(emoji)} para ${paraNome}? (Obrigatório)`);
             
             if (!justificativa || justificativa.trim().length < 3) {
-                alert("Você precisa dar uma justificativa real!");
+                alert("Você precisa escrever uma justificativa real para validar o voto!");
                 return;
             }
 
-            // Salva Voto, Trava e Log
             const updates = {};
             updates[`rodadas/${rodada}/votos_travados/${usuarioLogado}_${paraNome}`] = true;
             updates[`rodadas/${rodada}/logs/${push(ref(db)).key}`] = {
                 de: usuarioLogado, para: paraNome, emoji, justificativa, data: new Date().toLocaleString()
             };
             
-            // Incrementar contador
             const refContador = ref(db, `rodadas/${rodada}/participantes/${paraNome}/reacoes/${emoji}`);
             const currentSnap = await get(refContador);
             const currentVal = currentSnap.val() || 0;
             updates[`rodadas/${rodada}/participantes/${paraNome}/reacoes/${emoji}`] = currentVal + 1;
 
-            set(ref(db, '/'), (await get(ref(db, '/'))).val()); // Mantém estrutura
-            updateDB(updates);
+            for (let path in updates) { await set(ref(db, path), updates[path]); }
+            alert("Voto registrado com sucesso!");
         };
-
-        async function updateDB(updates) {
-            for (let path in updates) {
-                await set(ref(db, path), updates[path]);
-            }
-        }
 
         function atualizarPainel(data) {
             const painel = document.getElementById('painel');
             painel.innerHTML = '';
-            const rodada = getRodadaAtual();
             const votosHoje = data.votos_travados || {};
             const participantesData = data.participantes || {};
 
@@ -155,9 +143,9 @@
                 let html = "<ul>";
                 if(logs) {
                     Object.values(logs).reverse().forEach(l => {
-                        html += `<li><strong>${l.de}</strong> -> ${l.para} ${getEmojiChar(l.emoji)}: <em>"${l.justificativa}"</em></li>`;
+                        html += `<li>👤 <strong>${l.de}</strong> deu ${getEmojiChar(l.emoji)} para <strong>${l.para}</strong> <br><small style="color:gray;">Justificativa salva no sistema ✅</small></li>`;
                     });
-                }
+                } else { html += "<li>Nenhum log encontrado para esta data.</li>"; }
                 document.getElementById('modal-corpo').innerHTML = html + "</ul>";
                 document.getElementById('modal').style.display = 'flex';
             }, { onlyOnce: true });
@@ -166,26 +154,25 @@
         window.onload = () => {
             const sel = document.getElementById('loginUsuario');
             Object.keys(senhas).sort().forEach(n => sel.add(new Option(n, n)));
-            if (!estaNoHorarioVotacao()) alert("⚠️ O confessionário está fechado agora! Abre às 15h.");
         };
     </script>
     <style>
         :root { --primary: #ff4500; --bg: #f0f2f5; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .lista-participantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-        @media (max-width: 600px) { .lista-participantes { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; } }
-        .card { border: 1px solid #eee; padding: 10px; border-radius: 15px; text-align: center; background: #fff; transition: 0.3s; }
-        .foto-perfil { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); }
+        @media (max-width: 600px) { .lista-participantes { grid-template-columns: repeat(2, 1fr); gap: 10px; } .card h3 { font-size: 0.9em; } }
+        .card { border: 1px solid #eee; padding: 10px; border-radius: 15px; text-align: center; background: #fff; }
+        .foto-perfil { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); }
         .contadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; font-size: 0.7em; margin: 8px 0; background: #f8f9fa; padding: 5px; border-radius: 8px; }
         .voto-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .voto-rapido button { font-size: 1.2em; cursor: pointer; border: 1px solid #eee; background: white; border-radius: 8px; padding: 5px; }
-        .voto-rapido button:disabled { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
-        #tela-login { max-width: 350px; margin: 50px auto; padding: 30px; background: white; border-radius: 20px; text-align: center; border-top: 5px solid var(--primary); }
-        input, select, button.btn-main { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; }
+        .voto-rapido button { font-size: 1.1em; cursor: pointer; border: 1px solid #eee; background: white; border-radius: 8px; padding: 8px 0; }
+        .voto-rapido button:disabled { opacity: 0.3; filter: grayscale(1); }
+        #tela-login { max-width: 350px; margin: 50px auto; padding: 30px; background: white; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        input, select, button.btn-main { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
         button.btn-main { background: var(--primary); color: white; font-weight: bold; border: none; cursor: pointer; }
         #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; padding: 20px; z-index: 100; }
-        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 400px; max-height: 70vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -193,28 +180,26 @@
         <h1 style="color:var(--primary)">👑<br>Queridometro</h1>
         <select id="loginUsuario"></select>
         <input type="password" id="loginSenha" placeholder="Senha">
-        <button class="btn-main" onclick="fazerLogin()">ENTRAR NO CONFESSIONÁRIO</button>
+        <button class="btn-main" onclick="fazerLogin()">ENTRAR</button>
     </div>
 
     <div id="tela-principal" class="container" style="display:none;">
         <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <span>Olá, <strong id="nomeLogado"></strong>!</span>
-            <button onclick="location.reload()">Sair</button>
+            <span>Diva(o): <strong id="nomeLogado"></strong></span>
+            <button onclick="location.reload()" style="background:none; border:1px solid #ccc; border-radius:5px; padding:5px 10px;">Sair</button>
         </header>
         <div class="lista-participantes" id="painel"></div>
         <div id="area-admin" style="display:none; margin-top:20px; border-top:1px dashed #ccc; padding-top:20px; text-align:center;">
-            <button onclick="verLogs()" style="padding:10px; background:#17a2b8; color:white; border:none; border-radius:8px;">👁️ VER AUDITORIA / JUSTIFICATIVAS</button>
+            <button onclick="verLogs()" style="padding:12px; background:#17a2b8; color:white; border:none; border-radius:10px; width:100%; font-weight:bold;">👁️ AUDITORIA DE VOTOS</button>
         </div>
     </div>
 
     <div id="modal">
         <div class="modal-content">
-            <h2>📜 Histórico da Rodada</h2>
+            <h3>📜 Histórico da Rodada</h3>
             <div id="modal-corpo" style="text-align:left; font-size:0.9em;"></div>
             <button class="btn-main" onclick="document.getElementById('modal').style.display='none'">FECHAR</button>
         </div>
     </div>
 </body>
 </html>
-
-
