@@ -31,12 +31,23 @@
         let usuarioLogado = null;
         
         function getRodadaAtual() {
-            const agora = new Date();
-            const hora = agora.getHours();
-            const dataClone = new Date(agora);
-            if (hora < 12) dataClone.setDate(agora.getDate() - 1);
-            return dataClone.toISOString().split('T')[0];
-        }
+    // Força o fuso horário de Brasília (GMT-3)
+    const agora = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+    const hora = agora.getHours();
+    const dataClone = new Date(agora);
+    
+    // Se for antes das 12h, ainda pertence à rodada do dia anterior
+    if (hora < 12) {
+        dataClone.setDate(agora.getDate() - 1);
+    }
+    
+    const ano = dataClone.getFullYear();
+    const mes = String(dataClone.getMonth() + 1).padStart(2, '0');
+    const dia = String(dataClone.getDate()).padStart(2, '0');
+    
+    return `${ano}-${mes}-${dia}`;
+}
+
 
         function estaNoHorarioVotacao() {
             const agora = new Date();
